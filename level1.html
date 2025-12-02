@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Level 1: The Setup</title>
+<!-- Global Logic (Timer & State) -->
+<script type="module" src="js/game-logic.js"></script>
+<style>
+  :root {
+    --desk-bg: #1a1a1a;
+    --monitor-glow: rgba(100, 200, 255, 0.15);
+    --accent-gold: #d4af37;
+    --paper: #fdfbd3;
+  }
+  body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #000;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    perspective: 1000px;
+  }
+
+  /* --- RESPONSIVE SCALER WRAPPER --- */
+  #gameScale {
+    transform-origin: center;
+    transition: transform 0.2s;
+    width: 900px;
+    height: 600px;
+    position: relative;
+  }
+
+  /* --- THE SCENE --- */
+  .desk-scene {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 30% 30%, #333, #000 80%);
+    border-radius: 4px;
+    box-shadow: 0 0 100px rgba(0,0,0,0.9) inset;
+    overflow: hidden;
+    border: 2px solid #333;
+  }
+  
+  .light-source {
+    position: absolute; top: 100px; left: 150px; width: 300px; height: 200px;
+    background: var(--monitor-glow); filter: blur(50px); pointer-events: none;
+  }
+
+  /* --- OBJECTS --- */
+  .monitor-stand {
+    position: absolute; top: 80px; left: 120px;
+    width: 320px; height: 220px;
+    background: #222; border: 10px solid #333;
+    border-bottom-width: 25px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+  }
+  .screen {
+    width: 100%; height: 100%; background: #0a0a0a;
+    position: relative; overflow: hidden;
+    background-image: linear-gradient(transparent 95%, #ffffff10 95%),
+                      linear-gradient(90deg, transparent 95%, #ffffff10 95%);
+    background-size: 20px 20px;
+  }
+  .chart-line {
+    position: absolute; bottom: 50px; left: 0; width: 100%; height: 2px;
+    background: #00ff41; box-shadow: 0 0 10px #00ff41;
+    transform: rotate(-5deg);
+  }
+
+  .post-it {
+    position: absolute; bottom: 20px; right: 20px;
+    width: 100px; height: 100px;
+    background: var(--paper); color: #333;
+    padding: 15px; font-size: 11px; font-weight: bold;
+    transform: rotate(3deg);
+    box-shadow: 2px 3px 5px rgba(0,0,0,0.3);
+    cursor: pointer; transition: 0.3s; z-index: 10;
+  }
+  .post-it:hover { transform: scale(1.1) rotate(0deg); }
+
+  .journal {
+    position: absolute; bottom: 100px; left: 500px;
+    width: 140px; height: 180px;
+    background: linear-gradient(to right, #5c4033, #3e2b22);
+    border-radius: 5px 15px 15px 5px;
+    box-shadow: 5px 5px 15px rgba(0,0,0,0.6);
+    cursor: not-allowed; 
+    transform: rotate(-10deg);
+    transition: 0.3s; opacity: 0.7;
+  }
+  .journal.unlocked { cursor: pointer; opacity: 1; box-shadow: 0 0 25px var(--accent-gold); }
+  .journal::before { 
+    content: ''; position: absolute; left: 10px; top:0; height: 100%; width: 5px;
+    background: rgba(0,0,0,0.3);
+  }
+
+  .safe-container {
+    position: absolute; bottom: 50px; right: 80px;
+    width: 180px; height: 160px;
+    perspective: 600px; z-index: 5;
+  }
+  .safe-door {
+    width: 100%; height: 100%;
+    background: linear-gradient(145deg, #555, #222);
+    border: 4px solid #666; border-radius: 8px;
+    position: relative; display: flex; justify-content: center; align-items: center;
+    box-shadow: inset 0 0 20px #000, 5px 5px 15px #000;
+    transform-origin: left; transition: 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .safe-dial {
+    width: 60px; height: 60px;
+    background: radial-gradient(circle, #999, #444);
+    border: 3px solid #bbb; border-radius: 50%;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.5);
+    cursor: pointer;
+  }
+  .safe-container.open .safe-door { transform: rotateY(-110deg); }
+  
+  .treasure-box {
+    position: absolute; top: 10px; left: 10px; width: 160px; height: 140px;
+    background: #000; border-radius: 8px;
+    display: flex; justify-content: center; align-items: center;
+    box-shadow: inset 0 0 30px var(--accent-gold); color: var(--accent-gold);
+    opacity: 0; transition: 0.5s 0.5s;
+    flex-direction: column; text-align: center;
+  }
+  .safe-container.open .treasure-box { opacity: 1; }
+
+  /* --- MODALS --- */
+  .modal-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); z-index: 100;
+    display: none; justify-content: center; align-items: center;
+    animation: fadeIn 0.3s;
+  }
+  .modal-content {
+    background: #222; color: #fff; padding: 30px; border-radius: 8px;
+    border: 2px solid var(--accent-gold); max-width: 400px; text-align: center;
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.2);
+  }
+  
+  .journal-page {
+    background: var(--paper); color: #333; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    transform: rotate(-2deg);
+  }
+  .sketch-container {
+    border: 2px dashed #333; margin: 20px 0; padding: 10px; height: 150px; position: relative;
+  }
+  .fib-sketch {
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(180deg, #333, #333 1px, transparent 1px, transparent 20px);
+    position: relative;
+  }
+  .fib-line { position: absolute; width: 100%; height: 2px; background: red; opacity: 0.6;}
+  .fib-label { position: absolute; right: 5px; font-size: 10px; font-weight: bold;}
+
+  .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+  .key { background: #444; border: none; padding: 15px; color: white; font-size: 18px; cursor: pointer; border-radius: 4px; }
+  .key:hover { background: var(--accent-gold); color: #000; }
+  #codeDisplay { background: #000; color: var(--accent-gold); font-size: 24px; padding: 10px; letter-spacing: 5px; margin-bottom: 10px;}
+
+  @keyframes fadeIn { from {opacity:0;} to {opacity:1;}}
+</style>
+</head>
+<body>
+
+<div id="gameScale">
+    <div class="desk-scene">
+      <div class="light-source"></div>
+
+      <!-- OBJECT 1: MONITOR & POST-IT -->
+      <div class="monitor-stand">
+        <div class="screen">
+          <div class="chart-line"></div>
+          <div class="post-it" onclick="readPostIt()">
+            "I hid the combination in the 'Golden Pocket'. Check my trading journal. -M"
+          </div>
+        </div>
+      </div>
+
+      <!-- OBJECT 2: JOURNAL -->
+      <div class="journal" id="journalBook" onclick="openJournal()"></div>
+
+      <!-- OBJECT 3: SAFE -->
+      <div class="safe-container" id="safeContainer">
+        <div class="treasure-box">
+          <h3>ACCESS GRANTED</h3>
+          <p>Reward Code:<br><strong style="font-size: 20px;">561</strong></p>
+          <small style="color: #888">Redirecting...</small>
+        </div>
+        <div class="safe-door" onclick="openKeypad()">
+          <div class="safe-dial"></div>
+        </div>
+      </div>
+
+      <!-- MODALS (Inside Scale Wrapper so they scale too) -->
+      <div class="modal-overlay" id="journalModal" onclick="closeModals(event)">
+        <div class="modal-content journal-page">
+          <h3>The Boss's Sketchbook</h3>
+          <p>You find a page titled: "The Perfect Retracement"</p>
+          <div class="sketch-container">
+              <div class="fib-sketch">
+                  <div style="position:absolute; top:0; left:10%; width:2px; height:100%; background:#333;"></div> 
+                  <div style="position:absolute; bottom:0; right:10%; width:2px; height:80%; background:#333;"></div> 
+                  <div class="fib-line" style="top: 38.2%;"><span class="fib-label">0.382</span></div>
+                  <div class="fib-line" style="top: 50%; border-bottom: 3px solid red;"><span class="fib-label">0.500</span></div>
+                  <div class="fib-line" style="top: 61.8%; border-bottom: 4px solid red;"><span class="fib-label">0.618 (GOLD)</span></div>
+              </div>
+          </div>
+          <p>A note scrawled below reads:<br><em>"The sweet spot is between the half and the gold. <br>Combine the digits. X-X-X."</em></p>
+          <small>(Click outside to close)</small>
+        </div>
+      </div>
+
+      <div class="modal-overlay" id="keypadModal" onclick="closeModals(event)">
+        <div class="modal-content" style="background:#222;">
+          <h3>ENTER COMBINATION</h3>
+          <div id="codeDisplay">---</div>
+          <div class="keypad-grid">
+            <button class="key" onclick="pressKey(1)">1</button>
+            <button class="key" onclick="pressKey(2)">2</button>
+            <button class="key" onclick="pressKey(3)">3</button>
+            <button class="key" onclick="pressKey(4)">4</button>
+            <button class="key" onclick="pressKey(5)">5</button>
+            <button class="key" onclick="pressKey(6)">6</button>
+            <button class="key" onclick="pressKey(7)">7</button>
+            <button class="key" onclick="pressKey(8)">8</button>
+            <button class="key" onclick="pressKey(9)">9</button>
+            <button class="key" style="background:#522;" onclick="pressKey('C')">C</button>
+            <button class="key" onclick="pressKey(0)">0</button>
+            <button class="key" style="background:var(--accent-gold); color:#000;" onclick="submitCode()">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+<script>
+  // --- RESPONSIVE SCALER ---
+  function resizeGame() {
+    const game = document.getElementById('gameScale');
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const scale = Math.min(width / 900, height / 600); 
+    game.style.transform = `scale(${scale})`;
+  }
+  window.addEventListener('resize', resizeGame);
+  resizeGame();
+
+  // --- GAME LOGIC ---
+  let hasReadNote = false;
+  let isSafeOpen = false;
+  let currentCode = "";
+  const SOLUTION = "561"; 
+
+  const journal = document.getElementById('journalBook');
+  const journalModal = document.getElementById('journalModal');
+  const keypadModal = document.getElementById('keypadModal');
+  const display = document.getElementById('codeDisplay');
+  const safeContainer = document.getElementById('safeContainer');
+
+  function readPostIt() {
+    alert("Note reads:\n\n'I hid the combination in the \"Golden Pocket\". Check my trading journal. -M'");
+    hasReadNote = true;
+    journal.classList.add('unlocked');
+  }
+
+  function openJournal() {
+    if (!hasReadNote) {
+      alert("It's just an old journal. Why would I open this?");
+      return;
+    }
+    journalModal.style.display = "flex";
+  }
+
+  function openKeypad() {
+    if (isSafeOpen) return;
+    keypadModal.style.display = "flex";
+    currentCode = "";
+    updateDisplay();
+  }
+
+  function pressKey(num) {
+    if (num === 'C') {
+      currentCode = "";
+    } else if (currentCode.length < 3) {
+      currentCode += num;
+    }
+    updateDisplay();
+  }
+
+  function updateDisplay() {
+    display.textContent = currentCode.padEnd(3, '-');
+  }
+
+  function submitCode() {
+    if (currentCode === SOLUTION) {
+      // SUCCESS
+      keypadModal.style.display = "none";
+      isSafeOpen = true;
+      safeContainer.classList.add('open');
+      
+      // AUTO-REDIRECT TO LEVEL 2
+      setTimeout(() => {
+          alert("LEVEL 1 COMPLETE.\nCode found: 561.\n\nProceeding to Level 2...");
+          window.location.href = "level2.html";
+      }, 2000);
+
+    } else {
+      // FAIL
+      display.style.color = "red";
+      setTimeout(() => {
+        currentCode = "";
+        updateDisplay();
+        display.style.color = "var(--accent-gold)";
+      }, 500);
+    }
+  }
+
+  function closeModals(e) {
+    if (e.target === journalModal) journalModal.style.display = "none";
+    if (e.target === keypadModal) keypadModal.style.display = "none";
+  }
+</script>
+
+</body>
+</html>

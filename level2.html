@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Level 2: The Invisible Market</title>
+<!-- GLOBAL LOGIC -->
+<script type="module" src="js/game-logic.js"></script>
+<script type="module">
+    import { checkGate } from './js/game-logic.js';
+    // GATEKEEPING: Check for Level 1 Answer (561)
+    window.onload = () => { checkGate("561"); }
+</script>
+<style>
+  :root {
+    --bg: #050505;
+    --ink: #33ff00;
+  }
+  body {
+    margin: 0;
+    height: 100vh;
+    background-color: var(--bg);
+    overflow: hidden;
+    cursor: none; /* Hide cursor for immersion */
+    font-family: 'Courier New', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* --- RESPONSIVE SCALER --- */
+  #gameScale {
+    width: 900px;
+    height: 600px;
+    position: relative;
+    transform-origin: center;
+    box-shadow: 0 0 50px rgba(0,0,0,0.5);
+  }
+
+  .container {
+    width: 100%; height: 100%;
+    position: relative;
+    background: #111;
+    overflow: hidden;
+    border: 2px solid #333;
+  }
+
+  /* LAYER 1: The Wall */
+  .layer-normal {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(circle at 50% 50%, #222, #000); 
+    z-index: 1;
+  }
+
+  /* CHARTS */
+  .frame {
+    width: 200px; height: 280px;
+    background: #1a1a1a;
+    border: 4px solid #444;
+    position: absolute;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  }
+  .chart-canvas {
+    width: 100%; height: 100%;
+    background: linear-gradient(to bottom, #222 1px, transparent 1px), linear-gradient(to right, #222 1px, transparent 1px);
+    background-size: 20px 20px;
+    position: relative;
+  }
+  .line {
+    position: absolute; bottom: 50px; left: 10px; right: 10px; height: 2px; background: #666;
+    transform: rotate(-10deg);
+  }
+
+  /* FLASHLIGHT BEAM */
+  .flashlight-beam {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    /* The beam position is updated by JS variables --x and --y */
+    background: radial-gradient(circle 150px at var(--x, 50%) var(--y, 50%), rgba(60, 0, 255, 0.15) 0%, rgba(0,0,0,0.98) 20%);
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  /* HIDDEN INK */
+  .hidden-ink {
+    position: absolute;
+    color: var(--ink);
+    font-weight: bold;
+    font-size: 24px;
+    text-shadow: 0 0 10px var(--ink);
+    opacity: 0; 
+    transition: opacity 0.2s;
+    z-index: 5;
+  }
+
+  /* WALL SAFE */
+  .wall-safe {
+    position: absolute; top: 40%; right: 5%;
+    width: 80px; height: 120px;
+    background: #333; border: 2px solid #555;
+    z-index: 20; cursor: pointer;
+    display: flex; justify-content: center; align-items: center;
+    flex-direction: column;
+  }
+  .safe-light { width: 10px; height: 10px; background: red; border-radius: 50%; margin-bottom: 10px; box-shadow: 0 0 10px red;}
+  
+  .hud {
+    position: absolute; bottom: 20px; width: 100%; text-align: center;
+    color: #555; font-size: 12px; z-index: 20; pointer-events: none;
+  }
+
+</style>
+</head>
+<body>
+
+<div id="gameScale">
+    <div class="container" id="room">
+      
+      <!-- WALL CONTENT -->
+      <div class="layer-normal">
+        
+        <!-- Chart 1 -->
+        <div class="frame" style="top: 50px; left: 50px; transform: rotate(-2deg);">
+          <div class="chart-canvas">
+            <div style="position:absolute; top:10px; left:10px; color:#555; font-size:10px;">GBP/USD</div>
+            <div class="line" style="bottom:80px; transform: rotate(15deg);"></div>
+            <div class="hidden-ink" style="top: 40%; left: 60%;">8</div>
+          </div>
+        </div>
+
+        <!-- Chart 2 -->
+        <div class="frame" style="top: 80px; left: 300px; transform: rotate(1deg);">
+          <div class="chart-canvas">
+            <div style="position:absolute; top:10px; left:10px; color:#555; font-size:10px;">XAU/USD</div>
+            <div class="line" style="bottom:50px; width:80%;"></div>
+            <div class="hidden-ink" style="top: 20%; left: 30%;">4</div>
+          </div>
+        </div>
+
+        <!-- Chart 3 -->
+        <div class="frame" style="top: 200px; left: 550px; transform: rotate(3deg);">
+          <div class="chart-canvas">
+            <div style="position:absolute; top:10px; left:10px; color:#555; font-size:10px;">BTC/USD</div>
+            <div class="line" style="bottom:120px; transform: rotate(-25deg);"></div>
+            <div class="hidden-ink" style="bottom: 30%; right: 40%;">2</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- FLASHLIGHT LAYER -->
+      <div class="flashlight-beam" id="beam"></div>
+
+      <!-- SAFE -->
+      <div class="wall-safe" onclick="enterCode()">
+        <div class="safe-light" id="safeStatus"></div>
+        <div style="color:white; font-size:8px;">SECTOR 2</div>
+      </div>
+
+      <div class="hud">USE UV LIGHT TO SCAN FOR ORDER BLOCKS</div>
+    </div>
+</div>
+
+<script>
+  let currentScale = 1;
+
+  // RESPONSIVE SCALER
+  function resizeGame() {
+    const game = document.getElementById('gameScale');
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    currentScale = Math.min(width / 900, height / 600); 
+    game.style.transform = `scale(${currentScale})`;
+  }
+  window.addEventListener('resize', resizeGame);
+  resizeGame();
+
+  // MOUSE TRACKING (ADJUSTED FOR SCALE)
+  const room = document.getElementById('room');
+  const beam = document.getElementById('beam');
+  const inks = document.querySelectorAll('.hidden-ink');
+
+  document.addEventListener('mousemove', (e) => {
+    const rect = room.getBoundingClientRect();
+    
+    // Calculate X/Y relative to the scaled container
+    const x = (e.clientX - rect.left) / currentScale;
+    const y = (e.clientY - rect.top) / currentScale;
+
+    // Update CSS variables for gradient
+    beam.style.setProperty('--x', x + 'px');
+    beam.style.setProperty('--y', y + 'px');
+
+    // Check Distance to hidden inks
+    inks.forEach(ink => {
+      // Get ink position relative to container logic
+      const inkRect = ink.getBoundingClientRect();
+      const inkX = (inkRect.left + inkRect.width/2 - rect.left) / currentScale;
+      const inkY = (inkRect.top + inkRect.height/2 - rect.top) / currentScale;
+      
+      const dist = Math.hypot(x - inkX, y - inkY);
+      
+      if (dist < 100) { // 100px radius
+        ink.style.opacity = 1;
+      } else {
+        ink.style.opacity = 0;
+      }
+    });
+  });
+
+  // GAME LOGIC
+  function enterCode() {
+    const code = prompt("ENTER WALL SAFE CODE:");
+    if (code === "842") {
+      document.getElementById('safeStatus').style.background = "#00ff41";
+      document.getElementById('safeStatus').style.boxShadow = "0 0 10px #00ff41";
+      
+      setTimeout(() => {
+          alert("LEVEL 2 COMPLETE.\nCode found: 842.\n\nProceeding to Level 3...");
+          window.location.href = 'level3.html';
+      }, 500);
+    } else {
+      alert("ACCESS DENIED.");
+    }
+  }
+</script>
+
+</body>
+</html>

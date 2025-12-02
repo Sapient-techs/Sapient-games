@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sapient | Professional Assessment</title>
+<script type="module" src="js/game-logic.js"></script>
+<script type="module">
+    import { initProphecy, askOracle } from './js/ai-features.js';
+    
+    // Initialize on Load
+    window.addEventListener('DOMContentLoaded', () => {
+        initProphecy();
+        
+        // Attach Event Listeners safely
+        const btn = document.getElementById('askBtn');
+        const input = document.getElementById('oracleInput');
+        
+        if(btn) btn.addEventListener('click', submitQuery);
+        if(input) input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') submitQuery();
+        });
+    });
+
+    async function submitQuery() {
+        const input = document.getElementById('oracleInput');
+        const output = document.getElementById('oracleOutput');
+        const btn = document.getElementById('askBtn');
+        const val = input.value.trim();
+
+        if (!val) return;
+
+        // UI State: Sending
+        btn.disabled = true;
+        btn.innerText = "...";
+        output.style.opacity = 1;
+        output.innerHTML = `<span style="color:#64748b; font-style:italic;">Processing analysis...</span>`;
+
+        try {
+            const response = await askOracle(val);
+            // Format response: remove markdown bolding for cleaner look if present
+            const cleanResponse = response.replace(/\*\*/g, '');
+            output.innerText = cleanResponse;
+        } catch (e) {
+            output.innerText = "Connection to Analyst interrupted.";
+        }
+
+        // Reset UI
+        btn.disabled = false;
+        btn.innerText = "Send";
+        input.value = "";
+    }
+</script>
+<style>
+    :root {
+        --primary: #0f172a; /* Deep Slate */
+        --accent: #059669; /* Professional Emerald */
+        --gold: #d97706; /* Muted Gold */
+        --bg: #f8f9fa; /* Off-white */
+        --card-bg: #ffffff;
+        --text: #334155;
+        --border: #e2e8f0;
+    }
+
+    body { 
+        background-color: var(--bg);
+        color: var(--text); 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        height: 100vh; margin: 0; overflow: hidden;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+
+    /* --- BACKGROUND TEXTURE --- */
+    .bg-mesh {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: 
+            radial-gradient(at 0% 0%, rgba(5, 150, 105, 0.03) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(217, 119, 6, 0.03) 0px, transparent 50%);
+        z-index: -1;
+    }
+    .bg-pattern {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+        background-size: 40px 40px;
+        opacity: 0.4;
+        z-index: -1;
+    }
+
+    /* --- LAYOUT CONTAINER --- */
+    .container {
+        display: flex; flex-direction: column; align-items: center;
+        max-width: 800px; width: 90%;
+        position: relative; z-index: 10;
+    }
+
+    /* --- HEADER & LOGO (ENHANCED) --- */
+    .logo-container {
+        width: 140px; height: 140px; /* Increased Size */
+        background: white;
+        border-radius: 28px; /* Softer corners */
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08); /* Deeper shadow */
+        display: flex; justify-content: center; align-items: center;
+        margin-bottom: 30px;
+        border: 1px solid white;
+        transition: transform 0.4s ease, box-shadow 0.4s ease;
+        animation: floatLogo 6s ease-in-out infinite;
+    }
+    .logo-container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 30px 60px rgba(15, 23, 42, 0.12);
+    }
+    .logo-img {
+        width: 65%; height: 65%; object-fit: contain;
+        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+    }
+
+    @keyframes floatLogo {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+    }
+
+    h1 {
+        font-size: 3rem; margin: 0 0 10px 0;
+        color: var(--primary);
+        font-weight: 800; letter-spacing: -1px;
+    }
+    
+    .subtitle {
+        font-size: 1.1rem; color: #64748b; margin-bottom: 30px; text-align: center;
+        max-width: 500px; line-height: 1.6;
+    }
+
+    /* --- MARKET SENTIMENT BAR --- */
+    .sentiment-ticker {
+        display: flex; align-items: center; gap: 10px;
+        background: white;
+        padding: 8px 20px; border-radius: 50px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        margin-bottom: 40px;
+        font-size: 0.85rem; font-weight: 600; color: var(--primary);
+    }
+    .live-dot {
+        width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    /* --- MAIN CARD --- */
+    .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 40px;
+        width: 100%;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.08);
+        display: flex; flex-direction: column; align-items: center;
+    }
+
+    /* --- EMAIL FORM --- */
+    .form-group {
+        display: flex; width: 100%; gap: 10px; margin-bottom: 30px;
+    }
+    .email-input {
+        flex: 1; padding: 14px 20px; border-radius: 12px;
+        border: 1px solid var(--border); background: #f8fafc;
+        font-size: 1rem; color: var(--primary); outline: none; transition: 0.2s;
+    }
+    .email-input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.05); }
+    
+    .register-btn {
+        padding: 14px 24px; background: var(--primary); color: white;
+        border: none; border-radius: 12px; font-weight: 600; cursor: pointer;
+        transition: 0.2s; white-space: nowrap;
+    }
+    .register-btn:hover { background: #1e293b; transform: translateY(-1px); }
+
+    /* --- TIMER & CTA --- */
+    .timer-section {
+        display: flex; align-items: center; justify-content: space-between;
+        width: 100%; padding-top: 30px; border-top: 1px solid var(--border);
+    }
+    .timer-block { text-align: left; }
+    .timer-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 700; }
+    .timer-val { font-size: 1.5rem; font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; }
+
+    .start-btn {
+        background: linear-gradient(135deg, var(--accent), #047857);
+        color: white; padding: 16px 32px; border-radius: 12px;
+        font-size: 1rem; font-weight: 600; text-decoration: none;
+        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+        transition: 0.3s;
+    }
+    .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(5, 150, 105, 0.3); }
+
+    /* --- FOOTER BADGES --- */
+    .badges {
+        display: flex; gap: 20px; margin-top: 40px;
+    }
+    .badge {
+        font-size: 0.8rem; color: #64748b; background: rgba(255,255,255,0.6);
+        padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    /* --- AI ASSISTANT (Chat Widget) --- */
+    .assistant-widget {
+        position: fixed; bottom: 30px; right: 30px;
+        width: 320px; background: white;
+        border: 1px solid var(--border); border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        padding: 20px; z-index: 50;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .assistant-header {
+        font-size: 0.9rem; font-weight: 700; color: var(--primary);
+        margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
+    }
+    .status-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+    
+    .chat-input-group { display: flex; gap: 8px; }
+    .chat-input {
+        flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
+        background: #f8fafc; font-size: 0.85rem; outline: none; transition: 0.2s;
+    }
+    .chat-input:focus { background: white; border-color: #cbd5e1; }
+    
+    .chat-btn {
+        background: var(--primary); color: white; border: none; padding: 0 16px;
+        border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .chat-btn:hover { background: #334155; }
+    .chat-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    .chat-output {
+        margin-top: 15px; font-size: 0.85rem; color: #475569; line-height: 1.5;
+        background: #f1f5f9; padding: 12px; border-radius: 10px;
+        opacity: 0; transition: opacity 0.3s;
+    }
+
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+        h1 { font-size: 2rem; }
+        .form-group { flex-direction: column; }
+        .timer-section { flex-direction: column-reverse; gap: 20px; align-items: stretch; text-align: center; }
+        .timer-block { text-align: center; }
+        .assistant-widget { display: none; }
+    }
+</style>
+</head>
+<body>
+
+    <div class="bg-mesh"></div>
+    <div class="bg-pattern"></div>
+
+    <div class="container">
+        <!-- LOGO -->
+        <div class="logo-container">
+            <!-- Replace 'logo.png' with your actual file path -->
+            <img src="logo.png" alt="Sapient Logo" class="logo-img" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-weight:bold; color:#0f172a; font-size:24px;\'>SAPIENT</span>'">
+        </div>
+
+        <!-- SENTIMENT TICKER -->
+        <div class="sentiment-ticker">
+            <div class="live-dot"></div>
+            <span id="aiProphecy">CONNECTING TO MARKET FEED...</span>
+        </div>
+
+        <h1>The Sapient Assessment</h1>
+        <p class="subtitle">
+            A 5-stage evaluation of analytical precision and trading discipline.<br>
+            Top performers receive exclusive capital allocation access.
+        </p>
+
+        <!-- MAIN INTERFACE -->
+        <div class="card">
+            
+            <!-- GOOGLE FORM INTEGRATION -->
+            <!-- 
+               1. Create Google Form > Short Answer (Email).
+               2. Get <form action="..."> URL.
+               3. Get name="entry.XXXX" for the input.
+            -->
+            <form action="YOUR_GOOGLE_FORM_ACTION_URL_HERE" method="POST" target="_blank" class="form-group">
+                <input type="email" name="YOUR_ENTRY_ID_HERE" class="email-input" placeholder="Enter your email address" required>
+                <button type="submit" class="register-btn">Register ID</button>
+            </form>
+
+            <div class="timer-section">
+                <div class="timer-block">
+                    <div class="timer-label">Assessment Closes In</div>
+                    <div id="globalTimer" class="timer-val">LOADING...</div>
+                </div>
+                <a href="level1.html" class="start-btn">Start Assessment</a>
+            </div>
+        </div>
+
+        <div class="badges">
+            <div class="badge">Institutional Data</div>
+            <div class="badge">Global Leaderboard</div>
+            <div class="badge">Secure Environment</div>
+        </div>
+    </div>
+
+    <!-- AI ANALYST WIDGET -->
+    <div class="assistant-widget">
+        <div class="assistant-header">
+            <div class="status-dot"></div>
+            AI Analyst Assistant
+        </div>
+        <div class="chat-input-group">
+            <input type="text" id="oracleInput" class="chat-input" placeholder="Request hint...">
+            <button id="askBtn" class="chat-btn">Send</button>
+        </div>
+        <div id="oracleOutput" class="chat-output"></div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Level 3: The Whisper</title>
+<!-- GLOBAL LOGIC -->
+<script type="module" src="js/game-logic.js"></script>
+<script type="module">
+    import { checkGate } from './js/game-logic.js';
+    // GATEKEEPING: Check for Level 2 Answer (842)
+    window.onload = () => { checkGate("842"); }
+</script>
+<style>
+  :root {
+    --bg: #101010;
+    --machine: #2a2a2a;
+    --accent: #ff3333; /* Red for recording */
+    --text: #00ff41;
+  }
+  body {
+    margin: 0; height: 100vh;
+    background: radial-gradient(circle, #222, #000);
+    font-family: 'Courier New', monospace;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: white; overflow: hidden;
+  }
+
+  /* --- THE TAPE RECORDER --- */
+  .recorder {
+    width: 300px; height: 200px; /* Scaled down slightly for mobile */
+    background: #1a1a1a;
+    border: 4px solid #444;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    position: relative;
+    display: flex; justify-content: center; align-items: center;
+    margin-bottom: 30px;
+  }
+  
+  /* The Reels */
+  .reels-container {
+    display: flex; gap: 40px; position: absolute; top: 40px;
+  }
+  .reel {
+    width: 60px; height: 60px;
+    background: radial-gradient(circle, #fff 10%, #333 11%, #111 100%);
+    border-radius: 50%;
+    border: 2px solid #555;
+    position: relative;
+  }
+  /* Reel Spokes */
+  .reel::after {
+    content: ''; position: absolute; top: 0; left: 50%; width: 4px; height: 100%;
+    background: #333; transform: translateX(-50%);
+  }
+  .reel::before {
+    content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 4px;
+    background: #333; transform: translateY(-50%);
+  }
+  
+  /* Animation Class */
+  .spinning { animation: spin 2s linear infinite; }
+  @keyframes spin { 0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);} }
+
+  /* Tape Bridge */
+  .tape-bridge {
+    position: absolute; top: 100px; width: 140px; height: 4px; background: #332222;
+  }
+
+  /* Controls */
+  .controls {
+    position: absolute; bottom: 20px; display: flex; gap: 10px;
+  }
+  .btn {
+    width: 50px; height: 30px; background: #333; border: 1px solid #555;
+    cursor: pointer; transition: 0.1s; color: #fff;
+  }
+  .btn:active { transform: translateY(2px); }
+  .btn.play { background: #2e4a2e; color: #0f0; }
+  .btn.stop { background: #4a2e2e; color: #f00; }
+
+  /* --- THE TRANSCRIPT (Typewriter) --- */
+  .transcript-box {
+    width: 90%; max-width: 400px; min-height: 100px;
+    background: #000; border: 1px dashed #444;
+    padding: 20px; margin-bottom: 30px;
+    color: var(--text);
+    font-size: 14px; line-height: 1.5;
+    white-space: pre-wrap;
+    text-align: center;
+  }
+  .cursor { animation: blink 1s infinite; }
+  @keyframes blink { 50% {opacity:0;} }
+
+  /* --- THE CIPHER MACHINE (Answer Input) --- */
+  .cipher-machine {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; opacity: 0.5; transition: 0.5s; pointer-events: none; /* Locked until tape ends */
+  }
+  .cipher-machine.active { opacity: 1; pointer-events: all; }
+
+  .input-display {
+    background: #222; border: 2px solid #555;
+    padding: 10px; width: 200px; text-align: center;
+    font-size: 20px; letter-spacing: 5px; text-transform: uppercase;
+    color: #fff;
+  }
+  .submit-btn {
+    padding: 10px 30px; background: var(--text); color: #000; font-weight: bold;
+    border: none; cursor: pointer;
+  }
+  .submit-btn:hover { background: #fff; }
+
+</style>
+</head>
+<body>
+
+<div class="recorder">
+  <div class="reels-container">
+    <div class="reel" id="reel1"></div>
+    <div class="reel" id="reel2"></div>
+  </div>
+  <div class="tape-bridge"></div>
+  <div class="controls">
+    <button class="btn play" onclick="playTape()">PLAY</button>
+    <button class="btn stop" onclick="stopTape()">STOP</button>
+  </div>
+</div>
+
+<div class="transcript-box" id="transcript">
+  <span style="color:#555;">[PRESS PLAY TO LISTEN]</span>
+</div>
+
+<div class="cipher-machine" id="cipher">
+  <div style="color:#888; font-size:12px;">CIPHER SYSTEM UNLOCKED</div>
+  <input type="text" id="answer" class="input-display" placeholder="WHO AM I?" maxlength="10">
+  <button class="submit-btn" onclick="checkAnswer()">DECRYPT</button>
+</div>
+
+<script>
+  // THE RIDDLE
+  const riddleText = "I have no mouth, but I devour accounts...\nI have no hands, but I push the price...\nI hide 90% of my size beneath the surface...\nI appear only when the liquidity is thin...\n\nWhat kind of Order am I?";
+  
+  // THE ANSWER (Iceberg Order)
+  const SOLUTION = "ICEBERG";
+
+  let i = 0;
+  let isPlaying = false;
+  let typeInterval;
+  
+  const reel1 = document.getElementById('reel1');
+  const reel2 = document.getElementById('reel2');
+  const transcript = document.getElementById('transcript');
+  const cipher = document.getElementById('cipher');
+
+  function playTape() {
+    if (isPlaying) return;
+    isPlaying = true;
+    transcript.textContent = ""; // Clear
+    i = 0;
+    
+    // Start Animation
+    reel1.classList.add('spinning');
+    reel2.classList.add('spinning');
+
+    // Typewriter Effect
+    typeInterval = setInterval(() => {
+      transcript.textContent += riddleText.charAt(i);
+      i++;
+      if (i > riddleText.length - 1) {
+        finishTape();
+      }
+    }, 50); // Speed of typing
+  }
+
+  function stopTape() {
+    clearInterval(typeInterval);
+    isPlaying = false;
+    reel1.classList.remove('spinning');
+    reel2.classList.remove('spinning');
+  }
+
+  function finishTape() {
+    stopTape();
+    // Unlock the input
+    cipher.classList.add('active');
+    document.getElementById('answer').focus();
+  }
+
+  function checkAnswer() {
+    const input = document.getElementById('answer').value.toUpperCase().trim();
+    
+    if (input === SOLUTION) {
+      transcript.style.color = "gold";
+      transcript.textContent = "ACCESS GRANTED. \nProtocol Accepted: ICEBERG DETECTED.\n\nProceeding to Level 4...";
+      
+      // Simulate transition delay
+      setTimeout(() => {
+        alert("LEVEL 3 COMPLETE.\nCode found: ICEBERG.\n\nProceeding to Level 4...");
+        window.location.href = 'level4.html';
+      }, 1500);
+    } else {
+      transcript.style.color = "red";
+      transcript.textContent = "ERROR: INCORRECT DECRYPTION.\nTry Again.";
+      
+      // Shake effect
+      document.getElementById('answer').style.borderColor = "red";
+      setTimeout(() => {
+        document.getElementById('answer').style.borderColor = "#555";
+        transcript.style.color = "#00ff41";
+        transcript.textContent = riddleText; // Reset text
+      }, 1000);
+    }
+  }
+
+  // Allow Enter key
+  document.getElementById('answer').addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+      checkAnswer();
+    }
+  });
+
+</script>
+
+</body>
+</html>

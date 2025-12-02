@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEVEL 5: THE SINGULARITY</title>
+<!-- GLOBAL LOGIC -->
+<script type="module" src="js/game-logic.js"></script>
+<script type="module">
+    import { checkGate } from './js/game-logic.js';
+    // GATEKEEPING: Check for Level 4 Answer (ORION-GREEN)
+    window.onload = () => { checkGate("ORION-GREEN"); }
+</script>
+<style>
+    :root {
+        --bg: #030303;
+        --grid: #0f1810;
+        --neon-green: #0f0;
+        --neon-dim: #003311;
+        --alert: #ff003c;
+        --glass: rgba(10, 20, 15, 0.7);
+    }
+    
+    body {
+        margin: 0; height: 100vh; overflow: hidden;
+        background-color: var(--bg);
+        font-family: 'Courier New', monospace;
+        color: var(--neon-green);
+        display: flex; justify-content: center; align-items: center;
+    }
+
+    /* --- RESPONSIVE SCALER --- */
+    #gameScale {
+        width: 1000px; /* Base width */
+        height: 700px; /* Base height */
+        position: relative; transform-origin: center;
+        display: flex; justify-content: center; align-items: center;
+    }
+
+    /* --- CRT SCREEN EFFECT --- */
+    .screen-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        background-size: 100% 2px, 3px 100%;
+        pointer-events: none; z-index: 100;
+        box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+        animation: flicker 0.15s infinite;
+    }
+
+    /* --- THE HUD --- */
+    .hud-container {
+        width: 100%; height: 100%;
+        border: 2px solid var(--neon-dim);
+        position: relative;
+        display: grid;
+        grid-template-areas: 
+            "top top top"
+            "left center right"
+            "btm btm btm";
+        grid-template-rows: 60px 1fr 100px;
+        grid-template-columns: 250px 1fr 250px;
+        background: radial-gradient(circle at center, #051005 0%, #000 100%);
+    }
+
+    /* CORNER DATA NODES (Inputs) */
+    .data-node {
+        border: 1px solid var(--neon-dim);
+        padding: 15px;
+        display: flex; flex-direction: column; gap: 10px;
+        transition: 0.3s;
+        background: rgba(0,0,0,0.5);
+    }
+    .data-node.active { 
+        border-color: var(--neon-green); 
+        box-shadow: 0 0 15px var(--neon-dim);
+    }
+    .node-label { font-size: 10px; color: #448855; letter-spacing: 2px; }
+    
+    input {
+        background: transparent; border: none; border-bottom: 1px solid #335533;
+        color: var(--neon-green); font-family: inherit; font-size: 18px; text-transform: uppercase;
+        outline: none; text-align: center; letter-spacing: 3px;
+    }
+    input:focus { border-color: var(--neon-green); }
+    input.locked { color: #fff; text-shadow: 0 0 5px #fff; border-bottom: none; pointer-events: none; }
+
+    /* THE CORE (Centerpiece) */
+    .core-stage {
+        grid-area: center;
+        position: relative;
+        display: flex; justify-content: center; align-items: center;
+        perspective: 1000px;
+    }
+    
+    /* The 3D Rotating Rings */
+    .ring {
+        position: absolute; border-radius: 50%; border: 1px solid var(--neon-dim);
+        box-shadow: 0 0 10px var(--neon-dim);
+    }
+    .r1 { width: 300px; height: 300px; border-top-color: var(--neon-green); animation: spin 4s linear infinite; }
+    .r2 { width: 250px; height: 250px; border-right-color: var(--neon-green); animation: spin 6s linear infinite reverse; }
+    .r3 { width: 200px; height: 200px; border-bottom-color: var(--neon-green); animation: spin 3s linear infinite; }
+
+    /* Energy Beams */
+    .beam {
+        position: absolute; background: var(--neon-green);
+        height: 2px; width: 0; opacity: 0;
+        transform-origin: left;
+        box-shadow: 0 0 10px var(--neon-green);
+        transition: width 0.5s, opacity 0.2s;
+    }
+    
+    /* THE CHART (Hidden inside Core) */
+    .singularity-chart {
+        width: 300px; height: 200px;
+        background: #000; border: 2px solid var(--neon-dim);
+        position: absolute; opacity: 0; transform: scale(0);
+        transition: 1s cubic-bezier(0.19, 1, 0.22, 1);
+        overflow: hidden;
+        display: flex; justify-content: center; align-items: flex-end;
+    }
+    .singularity-chart.active { opacity: 1; transform: scale(1.5); border-color: var(--neon-green); z-index: 50; }
+    
+    .chart-line {
+        width: 4px; height: 50%; background: #fff;
+        box-shadow: 0 0 15px #fff;
+        position: relative;
+        transition: height 0.05s linear; /* Rapid movement */
+    }
+    
+    .target-zone {
+        position: absolute; bottom: 20px; width: 100%; height: 30px;
+        border-top: 1px dashed var(--neon-green);
+        border-bottom: 1px dashed var(--neon-green);
+        background: rgba(0, 255, 0, 0.1);
+        display: flex; justify-content: center; align-items: center;
+        font-size: 8px; color: var(--neon-green);
+    }
+
+    /* CONTROL DECK */
+    .control-deck {
+        grid-area: btm;
+        border-top: 1px solid var(--neon-dim);
+        display: flex; justify-content: center; align-items: center; gap: 30px;
+        background: rgba(0,20,10,0.8);
+    }
+
+    /* THE BIG BUTTON */
+    .exec-btn {
+        width: 200px; height: 50px;
+        background: transparent; color: #333;
+        border: 2px solid #333; font-weight: bold; font-size: 18px; letter-spacing: 5px;
+        cursor: not-allowed; transition: 0.3s;
+        position: relative; overflow: hidden;
+    }
+    .exec-btn.ready {
+        border-color: var(--neon-green); color: var(--neon-green);
+        box-shadow: 0 0 20px var(--neon-dim); cursor: pointer;
+    }
+    .exec-btn.ready:hover {
+        background: var(--neon-green); color: black;
+        box-shadow: 0 0 40px var(--neon-green);
+    }
+    
+    /* SYSTEM LOG */
+    .sys-log {
+        position: absolute; top: 20px; left: 20px;
+        font-size: 12px; opacity: 0.7; pointer-events: none;
+    }
+
+    /* --- ANIMATIONS --- */
+    @keyframes spin { 0% { transform: rotateX(60deg) rotateZ(0deg); } 100% { transform: rotateX(60deg) rotateZ(360deg); } }
+    @keyframes flicker { 0% {opacity: 0.97;} 5% {opacity: 0.95;} 10% {opacity: 0.9;} 15% {opacity: 0.95;} 20% {opacity: 1;} }
+    @keyframes flash { 0% { background: white; } 100% { background: black; } }
+
+    /* VICTORY CARD */
+    .black-card {
+        position: fixed; top:0; left:0; width:100%; height:100%;
+        background: black; z-index: 200; display: none;
+        flex-direction: column; justify-content: center; align-items: center;
+        animation: flash 1s ease-out;
+    }
+    .card-content {
+        border: 1px solid #333; padding: 40px; text-align: center;
+        background: linear-gradient(135deg, #111, #000);
+        box-shadow: 0 10px 50px rgba(255,255,255,0.1);
+    }
+    .claim-btn {
+        background: var(--neon-green); color: black; border: none;
+        padding: 10px 20px; font-weight: bold; cursor: pointer; margin-top: 20px;
+    }
+
+</style>
+</head>
+<body>
+
+<div class="screen-overlay"></div>
+
+<div class="sys-log" id="log">
+    > INITIALIZING SAPIENT KERNEL...<br>
+    > WAITING FOR USER INPUT...
+</div>
+
+<div id="gameScale">
+    <div class="hud-container">
+        
+        <div style="grid-area: top; display:flex; justify-content:space-between; align-items:center; padding:0 30px; border-bottom:1px solid #003311;">
+            <span>SAPIENT_OS v9.0</span>
+            <span id="market-status" style="color:var(--alert)">MARKET CRASH IMMINENT</span>
+        </div>
+
+        <div style="grid-area: left; display:flex; flex-direction:column; justify-content:center; gap:20px; padding:20px;">
+            <div class="data-node" id="node1">
+                <span class="node-label">NODE_01 [MON]</span>
+                <input type="text" id="in1" maxlength="3" onkeyup="validate()">
+            </div>
+            <div class="data-node" id="node2">
+                <span class="node-label">NODE_02 [TUE]</span>
+                <input type="text" id="in2" maxlength="3" onkeyup="validate()">
+            </div>
+        </div>
+
+        <div class="core-stage">
+            <div class="ring r1" id="ring1"></div>
+            <div class="ring r2" id="ring2"></div>
+            <div class="ring r3" id="ring3"></div>
+            
+            <div class="beam" style="top:50%; left:0; width:100px; transform:rotate(150deg);"></div>
+            
+            <div class="singularity-chart" id="chart">
+                <div class="target-zone" id="zone">LIQUIDITY POOL [BUY HERE]</div>
+                <div class="chart-line" id="price"></div>
+            </div>
+        </div>
+
+        <div style="grid-area: right; display:flex; flex-direction:column; justify-content:center; gap:20px; padding:20px;">
+            <div class="data-node" id="node3">
+                <span class="node-label">NODE_03 [WED]</span>
+                <input type="text" id="in3" onkeyup="validate()">
+            </div>
+            <div class="data-node" id="node4">
+                <span class="node-label">NODE_04 [THU]</span>
+                <input type="text" id="in4" onkeyup="validate()">
+            </div>
+        </div>
+
+        <div class="control-deck">
+            <button class="exec-btn" id="btn" onclick="execute()">INITIALIZE</button>
+        </div>
+    </div>
+</div>
+
+<div class="black-card" id="victory">
+    <div class="card-content">
+        <h1 style="color:white; letter-spacing:5px; margin-bottom:5px;">SAPIENT</h1>
+        <p style="color:#444; font-size:12px; margin-bottom:30px;">ELITE TRADER VERIFIED</p>
+        <div style="font-size:30px; color:#c5a059; font-weight:bold;">LAUNCH-VIP-001</div>
+        <p style="color:#666; font-size:10px; margin-top:20px;">(Code Expires in 3 Mins)</p>
+        <button class="claim-btn" onclick="goToReward()">CLAIM ASSET</button>
+    </div>
+</div>
+
+<script>
+    // --- RESPONSIVE SCALER ---
+    function resizeGame() {
+        const game = document.getElementById('gameScale');
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const scale = Math.min(width / 1050, height / 750); 
+        game.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('resize', resizeGame);
+    resizeGame();
+
+    // --- CONFIG ---
+    const CODES = {
+        n1: "561",
+        n2: "842",
+        n3: "ICEBERG",
+        n4: "ORION-GREEN"
+    };
+
+    // --- STATE ---
+    let locked = { n1: false, n2: false, n3: false, n4: false };
+    let allLocked = false;
+    let charting = false;
+    let priceInterval = null;
+
+    // --- LOGIC ---
+    function log(msg) {
+        document.getElementById('log').innerHTML += `> ${msg}<br>`;
+    }
+
+    function validate() {
+        checkNode('in1', 'node1', CODES.n1, 'n1');
+        checkNode('in2', 'node2', CODES.n2, 'n2');
+        checkNode('in3', 'node3', CODES.n3, 'n3');
+        checkNode('in4', 'node4', CODES.n4, 'n4');
+
+        if(locked.n1 && locked.n2 && locked.n3 && locked.n4 && !allLocked) {
+            allLocked = true;
+            sysReady();
+        }
+    }
+
+    function checkNode(inputId, nodeId, answer, key) {
+        if(locked[key]) return; // Already solved
+
+        const val = document.getElementById(inputId).value.toUpperCase().trim();
+        if(val === answer) {
+            locked[key] = true;
+            document.getElementById(inputId).classList.add('locked');
+            document.getElementById(nodeId).classList.add('active');
+            log(`NODE ${key.toUpperCase()} SYNCED.`);
+            
+            // Speed up rings visually
+            document.getElementById('ring1').style.animationDuration = "1s";
+        }
+    }
+
+    function sysReady() {
+        log("ALL NODES SYNCED. CORE STABILIZED.");
+        const btn = document.getElementById('btn');
+        btn.classList.add('ready');
+        btn.innerText = "ACTIVATE";
+        
+        document.getElementById('ring1').style.borderColor = "#0f0";
+        document.getElementById('ring2').style.borderColor = "#0f0";
+        document.getElementById('ring3').style.borderColor = "#0f0";
+    }
+
+    function execute() {
+        if(!allLocked) return;
+        
+        if(!charting) {
+            // START PHASE 2: CHARTING
+            charting = true;
+            log("LOCATING LIQUIDITY POOL...");
+            
+            // Transform UI
+            document.getElementById('btn').innerText = "BUY LIMIT";
+            document.getElementById('chart').classList.add('active');
+            
+            // Start Chaos Chart
+            startChart();
+        } else {
+            // PHASE 3: THE SNIPE
+            attemptSnipe();
+        }
+    }
+
+    function startChart() {
+        const line = document.getElementById('price');
+        let h = 50;
+        let direction = 1;
+        let speed = 2;
+
+        priceInterval = setInterval(() => {
+            // Random acceleration
+            if(Math.random() > 0.9) speed = Math.random() * 15 + 5;
+            
+            h += (speed * direction);
+
+            // Bounce logic
+            if(h > 95) { direction = -1; speed = 5; }
+            if(h < 5) { direction = 1; speed = 5; }
+
+            line.style.height = h + "%";
+        }, 30);
+    }
+
+    function attemptSnipe() {
+        // Stop Chart
+        clearInterval(priceInterval);
+        const line = document.getElementById('price');
+        const h = parseFloat(line.style.height);
+
+        // Target Zone is roughly bottom 20% (Low prices)
+        // Let's say < 25% height is the dip
+        if(h < 25) {
+            // WIN
+            log("ENTRY FILLED PERFECTLY.");
+            document.getElementById('btn').style.background = "#0f0";
+            document.getElementById('btn').style.color = "#000";
+            document.getElementById('btn').innerText = "FILLED";
+            
+            // ACTIVATE TIMER FOR REWARD
+            const expiryTime = Date.now() + (3 * 60 * 1000); // 3 Mins from now
+            localStorage.setItem('sapient_expiry', expiryTime);
+
+            setTimeout(() => {
+                document.getElementById('victory').style.display = 'flex';
+            }, 1000);
+        } else {
+            // LOSE
+            document.getElementById('btn').style.background = "#f00";
+            document.getElementById('btn').innerText = "MISSED";
+            log("CRITICAL ERROR: ENTRY TOO HIGH.");
+            alert("You bought the top! The market crashed without you.\n\nRebooting...");
+            location.reload();
+        }
+    }
+
+    // HAND-OFF TO REWARD PAGE
+    window.goToReward = function() {
+        window.location.href = "reward.html";
+    }
+
+</script>
+</body>
+</html>
